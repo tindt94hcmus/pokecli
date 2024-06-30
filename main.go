@@ -55,6 +55,11 @@ func getCommands(cfg *config) map[string]cliCommand {
 			description: "Tries to catch a Pokemon by name",
 			callback:    commandCatch(cfg),
 		},
+		"inspect": {
+			name:        "inspect",
+			description: "Inspect details of a caught Pokémon",
+			callback:    commandInspect(cfg),
+		},
 	}
 }
 
@@ -185,6 +190,39 @@ func commandList(cfg *config) error {
 		fmt.Printf("- %s (Base Experience: %d)\n", pokemon.Name, pokemon.BaseExperience)
 	}
 	return nil
+}
+
+func commandInspect(cfg *config) func(args []string) error {
+	return func(args []string) error {
+
+		if len(args) == 0 {
+			fmt.Println("please provide a pokemon name")
+		}
+
+		pokemonName := args[0]
+		pokemon, ok := cfg.Pokedex[pokemonName]
+
+		if !ok {
+			fmt.Printf("You have not caught %s yet.\n", pokemonName)
+			return nil
+		}
+
+		fmt.Printf("Name: %s\n", pokemon.Name)
+		fmt.Printf("Height: %d\n", pokemon.Height)
+		fmt.Printf("Weight: %d\n", pokemon.Weight)
+
+		fmt.Println("Stats:")
+		for _, stat := range pokemon.Stats {
+			fmt.Printf("- %s: %d\n", stat.Stat.Name, stat.BaseStat)
+		}
+
+		fmt.Println("Types:")
+		for _, pokeType := range pokemon.Types {
+			fmt.Printf("- %s\n", pokeType.Type.Name)
+		}
+
+		return nil
+	}
 }
 
 func main() {
