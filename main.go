@@ -55,6 +55,11 @@ func getCommands(cfg *config) map[string]cliCommand {
 			description: "Tries to catch a Pokemon by name",
 			callback:    commandCatch(cfg),
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "Lists all caught Pokémon",
+			callback:    commandList(cfg),
+		},
 		"inspect": {
 			name:        "inspect",
 			description: "Inspect details of a caught Pokémon",
@@ -162,7 +167,7 @@ func commandCatch(cfg *config) func(args []string) error {
 		}
 
 		rand.New(rand.NewSource(time.Now().UnixNano()))
-		catchProbability := 100.0 / float64(pokemonData.BaseExperience)
+		catchProbability := float64(pokemonData.BaseExperience) / 255
 		randomNumber := rand.Float64()
 		fmt.Printf("catchProbability: %v\n", catchProbability)
 		fmt.Printf("random: %v\n", randomNumber)
@@ -179,17 +184,19 @@ func commandCatch(cfg *config) func(args []string) error {
 
 }
 
-func commandList(cfg *config) error {
-	if len(cfg.Pokedex) == 0 {
-		fmt.Println("No Pokémon caught yet.")
+func commandList(cfg *config) func(args []string) error {
+	return func(args []string) error {
+		if len(cfg.Pokedex) == 0 {
+			fmt.Println("No Pokémon caught yet.")
+			return nil
+		}
+
+		fmt.Println("Caught Pokémon:")
+		for _, pokemon := range cfg.Pokedex {
+			fmt.Printf("- %s (Base Experience: %d)\n", pokemon.Name, pokemon.BaseExperience)
+		}
 		return nil
 	}
-
-	fmt.Println("Caught Pokémon:")
-	for _, pokemon := range cfg.Pokedex {
-		fmt.Printf("- %s (Base Experience: %d)\n", pokemon.Name, pokemon.BaseExperience)
-	}
-	return nil
 }
 
 func commandInspect(cfg *config) func(args []string) error {
