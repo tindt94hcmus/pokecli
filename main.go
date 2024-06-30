@@ -3,15 +3,18 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"math/rand"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/tindt94hcmus/pokedexcli/internal/pokeapi"
 )
 
 type config struct {
-	Next string
-	Prev string
+	Next    string
+	Prev    string
+	Pokedex map[string]pokeapi.PokemonData
 }
 
 type cliCommand struct {
@@ -46,6 +49,11 @@ func getCommands(cfg *config) map[string]cliCommand {
 			name:        "explore",
 			description: "Displays the list of Pokémon in a given location area",
 			callback:    commandExplore,
+		},
+		"catch": {
+			name:        "catch",
+			description: "Tries to catch a Pokemon by name",
+			callback:    commandCatch(cfg),
 		},
 	}
 }
@@ -134,8 +142,55 @@ func commandExplore(args []string) error {
 	return nil
 }
 
+func commandCatch(cfg *config) func(args []string) error {
+	return func(args []string) error {
+		if len(args) == 0 {
+			return fmt.Errorf("please provide Pokemon name.")
+		}
+
+		pokemonName := args[0]
+		fmt.Printf("Throwing a Pokeball at %s...\n", pokemonName)
+		pokemonData, err := pokeapi.FetchPokemonByName(pokemonName)
+
+		if err != nil {
+			return fmt.Errorf("error fetching Pokemon in area %s: %v", pokemonName, err)
+		}
+
+		rand.New(rand.NewSource(time.Now().UnixNano()))
+		catchProbability := 100.0 / float64(pokemonData.BaseExperience)
+		randomNumber := rand.Float64()
+		fmt.Printf("catchProbability: %v\n", catchProbability)
+		fmt.Printf("random: %v\n", randomNumber)
+		if randomNumber <= catchProbability {
+			fmt.Printf("You caught %s!\n", pokemonData.Name)
+			cfg.Pokedex[pokemonData.Name] = pokemonData
+		} else {
+			fmt.Printf("%s escaped!\n", pokemonData.Name)
+		}
+
+		commandList(cfg)
+		return nil
+	}
+
+}
+
+func commandList(cfg *config) error {
+	if len(cfg.Pokedex) == 0 {
+		fmt.Println("No Pokémon caught yet.")
+		return nil
+	}
+
+	fmt.Println("Caught Pokémon:")
+	for _, pokemon := range cfg.Pokedex {
+		fmt.Printf("- %s (Base Experience: %d)\n", pokemon.Name, pokemon.BaseExperience)
+	}
+	return nil
+}
+
 func main() {
-	cfg := &config{}
+	cfg := &config{
+		Pokedex: make(map[string]pokeapi.PokemonData),
+	}
 	commands := getCommands(cfg)
 	scanner := bufio.NewScanner(os.Stdin)
 

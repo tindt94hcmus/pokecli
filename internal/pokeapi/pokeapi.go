@@ -10,7 +10,7 @@ import (
 	"github.com/tindt94hcmus/pokedexcli/internal/pokecache"
 )
 
-const ENDPOINT = "https://pokeapi.co/api/v2/location-area"
+const ENDPOINT = "https://pokeapi.co/api/v2"
 
 type LocationArea struct {
 	Name string `json:"name"`
@@ -26,7 +26,7 @@ var cache = pokecache.NewCache(5 * time.Minute)
 
 func FetchLocationAreas(url string) (LocationAreaResponse, error) {
 	if url == "" {
-		url = ENDPOINT
+		url = fmt.Sprintf("%s/%s", ENDPOINT, "location-area")
 	}
 
 	if data, found := cache.Get(url); found {
@@ -72,7 +72,7 @@ type PokemonResponse struct {
 }
 
 func FetchPokemonInArea(areaName string) (PokemonResponse, error) {
-	url := fmt.Sprintf("%s/%s", ENDPOINT, areaName)
+	url := fmt.Sprintf("%s/location-area/%s", ENDPOINT, areaName)
 
 	if data, found := cache.Get(url); found {
 		var pokemonResponse PokemonResponse
@@ -102,4 +102,61 @@ func FetchPokemonInArea(areaName string) (PokemonResponse, error) {
 	cache.Add(url, body)
 
 	return pokemonResponse, nil
+}
+
+type Stat struct {
+	BaseStat int `json:"base_stat"`
+	Stat     struct {
+		Name string `json:"name"`
+	} `json:"stat"`
+}
+
+type Type struct {
+	Type struct {
+		Name string `json:"name"`
+	} `json:"type"`
+}
+
+type PokemonData struct {
+	Name           string `json:"name"`
+	BaseExperience int    `json:"base_experience"`
+	Height         int    `json:"height"`
+	Weight         int    `json:"weight"`
+	Stats          []Stat `json:"stats"`
+	Types          []Type `json:"types"`
+}
+
+func FetchPokemonByName(pokemonName string) (PokemonData, error) {
+	url := fmt.Sprintf("%s/pokemon/%s", ENDPOINT, pokemonName)
+
+	if data, found := cache.Get(url); found {
+		var pokemonData PokemonData
+		err := json.Unmarshal(data, &pokemonData)
+		if err == nil {
+			return pokemonData, nil
+		}
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return PokemonData{}, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return PokemonData{}, err
+	}
+
+	var pokemonData PokemonData
+	err = json.Unmarshal(body, &pokemonData)
+	if err != nil {
+		return PokemonData{}, err
+	}
+
+	fmt.Printf("BaseExperience: %v\n", pokemonData.BaseExperience)
+
+	cache.Add(url, body)
+
+	return pokemonData, nil
 }
